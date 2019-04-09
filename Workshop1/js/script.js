@@ -18,19 +18,21 @@ function loadBookData() {
     }
 }
 
-
-
-
-
+function showDeliveredDate(BookId,DeliveredDate) {
+    //console.log(typeof DeliveredDate);
+    $('#DeliveredIcon' + BookId).kendoTooltip({
+        content: DeliveredDate
+    });
+}
 
 function loadBookGrid() {
     $(document).ready(function () {
         var bookData = JSON.parse(localStorage.getItem('bookData'));
         console.log(bookData);
         $("#book_grid").kendoGrid({
+            toolbar: "<input type='search' class='k-textbox' id='searchBox' placeholder='我想要找..'>",
             dataSource: { data: bookData },
             height: 550,
-            groupable: true,
             sortable: true,
             pageable: {
                 refresh: true,
@@ -43,7 +45,20 @@ function loadBookGrid() {
                     name: "details",
                     text: "刪除",
                     click: function (e) {
-                        console.log("Details for: ");
+                        // prevent page scroll position change
+                        e.preventDefault();
+                        // e.target is the DOM element representing the button
+                        var tr = $(e.target).closest("tr"); // get the current table row (tr)
+                        // get the data bound to the current table row
+                        var dataItem = this.dataItem(tr);
+                        kendo.confirm("確定刪除「" + dataItem.BookName + "」嗎?")
+                            .done(function () {
+                                var GridData = $("#book_grid").data("kendoGrid").dataSource;
+                                //console.log(GridData);
+                                GridData.remove(dataItem);
+                                localStorage.clear();
+                                localStorage.setItem('bookData', JSON.stringify(GridData._data));
+                            });
                     }
                 },
                 width: 70
@@ -81,13 +96,15 @@ function loadBookGrid() {
             }, {
                 field: "BookDeliveredDate",
                 title: "送達狀態",
-                    template: function (dataItem) {
-                        if (typeof dataItem.BookDeliveredDate != "undefined") {
-                            return "<i class='fas fa-truck' title=" + kendo.format(dataItem.BookDeliveredDate,'yyyy-MM-dd')+ "></i>";
-                        }
-                        else {
-                            return "";
-                        }
+                template: function (dataItem) {
+                    if (typeof dataItem.BookDeliveredDate != "undefined") {
+                        //console.log(dataItem);
+                        var BookId = dataItem.BookId;
+                        return "<i class='fas fa-truck' id='DeliveredIcon" + BookId + "' onmouseover=showDeliveredDate(" + dataItem.BookId + ",'" + dataItem.BookDeliveredDate + "') ></i >";
+                    }
+                    else {
+                        return "";
+                    }
                 },
                 width: 50
             }, {
@@ -116,6 +133,19 @@ function loadBookGrid() {
                 width: 70
             }
             ]
+        });
+        //設定查詢規則
+        $('#searchBox').keyup(function () {
+            var search = $('#searchBox').val();
+            //console.log(search);
+            var GridData = $("#book_grid").data("kendoGrid").dataSource;
+            GridData.filter({
+                logic: "or",
+                filters: [
+                    { field: "BookName", operator: "contains", value: search },
+                    { field: "BookAuthor", operator: "contains", value: search }
+                ]
+            });
         });
     });
 }
